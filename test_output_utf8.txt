@@ -1,0 +1,10 @@
+
+--- Testing Redis Connection to redis://127.0.0.1:6379 ---
+Γ£à Redis PING successful.
+Γ£à Subscribed to 'test_channel' (Confirmed).
+Γ£à Published message to 'test_channel'.
+Γ£à Received message: Hello Redis!
+
+--- Testing gRPC Connection to 127.0.0.1:50051 ---
+Sending ValidateJoin request...
+Γ£à ValidateJoin response: Allowed=False, Reason='Room not found'

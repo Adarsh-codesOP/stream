@@ -99,30 +99,19 @@ def block_user_from_room(room_id: int, user_to_block_id: int, reason: str = "Ban
         print(f"Failed to send kick message to Redis: {e}")
 
     return {"message": f"User {user_to_block.username} banned from room {room.name}"}
+    return {"message": f"User {user_to_block.username} banned from room {room.name}"}
 
 @router.get("/{room_id}/messages")
 def get_room_messages(room_id: int, limit: int = 50, db: Session = Depends(database.get_db)):
-    # Verify room exists (optional but good)
-    room = db.query(models.Room).filter(models.Room.id == room_id).first()
-    if not room:
-        raise HTTPException(status_code=404, detail="Room not found")
-        
-    messages = db.query(models.Message)\
-        .filter(models.Message.room_id == room_id)\
-        .order_by(models.Message.timestamp.asc())\
-        .limit(limit)\
-        .all()
-        
-    # Format response to match what frontend expects from WebSocket
-    # Frontend expects: {type: 'chat', content: '...', user_id: 123}
-    # We can also add username if we join, but for now let's rely on mapping
+    messages = db.query(models.Message).filter(models.Message.room_id == room_id).order_by(models.Message.timestamp.asc()).limit(limit).all()
     
     return [
         {
-            "type": "chat",
+            "id": msg.id,
             "content": msg.content,
             "user_id": msg.sender_id,
-            "timestamp": msg.timestamp.isoformat()
+            "username": msg.sender.username if msg.sender else "Unknown",
+            "timestamp": msg.timestamp
         }
         for msg in messages
     ]

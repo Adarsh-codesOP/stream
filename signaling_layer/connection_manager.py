@@ -48,14 +48,14 @@ class ConnectionManager:
         return len(self.active_connections.get(room_id, []))
 
     def get_active_users(self, room_id: int) -> List[int]:
-        """Returns a list of user IDs currently in the room."""
-        users = []
+        """Returns a list of unique user IDs currently in the room."""
+        users = set()
         if room_id in self.active_connections:
             for ws in self.active_connections[room_id]:
                 uid = self.socket_to_user.get(ws)
                 if uid:
-                    users.append(uid)
-        return users
+                    users.add(uid)
+        return list(users)
 
     async def kick_user(self, room_id: int, user_id: int):
         """Disconnects a specific user from the room."""

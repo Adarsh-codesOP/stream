@@ -1,0 +1,53 @@
+curl -X 'POST' \
+  'http://localhost:8000/rooms/' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsImV4cCI6MTc3MDYxNzM2M30.O7thNT7_sLmI_6VXg5poXh8ktVyY6XNYZE8-R1R0xGo' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "General",
+  "max_participants": 10
+}'
+
+curl -X 'POST' \
+  'http://localhost:8000/rooms/1/block' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsImV4cCI6MTc3MDYxNzM2M30.O7thNT7_sLmI_6VXg5poXh8ktVyY6XNYZE8-R1R0xGo' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "user_id": 2,
+  "reason": "Spamming"
+}'
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsImV4cCI6MTc3MDYxNzkyMn0.Fq1ujksh1w0Xdf66TNJNyHVPHByB5P_I-6KqtcS6AtI
+
+adars@Phantom MINGW64 ~/Desktop/Project/StreamLink (main)     
+$ curl -X 'POST' \
+  'http://localhost:8000/rooms/1/block' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsImV4cCI6MTc3MDYxNzM2M30.O7thNT7_sLmI_6VXg5poXh8ktVyY6XNYZE8-R1R0xGo' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "user_id": 2,
+  "reason": "Spamming"
+}'
+Internal Server Error
+
+curl -X 'GET' \
+  'http://localhost:8000/rooms/1/messages' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsImV4cCI6MTc3MDYxNzM2M30.O7thNT7_sLmI_6VXg5poXh8ktVyY6XNYZE8-R1R0xGo' \
+  -H 'accept: application/json'
+
+  curl -X 'POST' \
+  'http://localhost:8000/users/ban' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsImV4cCI6MTc3MDYxNzM2M30.O7thNT7_sLmI_6VXg5poXh8ktVyY6XNYZE8-R1R0xGo' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "user_id": 2
+}'
+
+
+curl -X 'POST' \
+  'http://localhost:8000/rooms/' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsImV4cCI6MTc3MDYxNzkyMn0.Fq1ujksh1w0Xdf66TNJNyHVPHByB5P_I-6KqtcS6AtI' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "General",
+  "max_participants": 10
+}'

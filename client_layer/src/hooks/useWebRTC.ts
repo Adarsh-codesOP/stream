@@ -18,8 +18,31 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
     const peerConnections = useRef<{ [key: string]: RTCPeerConnection }>({});
     const localStream = useRef<MediaStream | null>(null);
     const remoteVideoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
+    const remoteStreams = useRef<{ [key: string]: MediaStream }>({}); // Buffer for streams
 
     const WS_URL = `ws://localhost:8001/ws/${roomId}/${userId}`;
+
+    // Fetch History
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const response = await fetch(`http://localhost:8000/rooms/${roomId}/messages`);
+                if (response.ok) {
+                    const history = await response.json();
+                    const formatted = history.map((msg: any) => ({
+                        type: 'chat',
+                        user_id: msg.user_id,
+                        content: msg.content,
+                        username: msg.username
+                    }));
+                    setMessages(formatted);
+                }
+            } catch (e) {
+                console.error("Failed to fetch chat history:", e);
+            }
+        };
+        fetchHistory();
+    }, [roomId]);
 
     const { sendMessage, lastMessage, readyState } = useWebSocket(WS_URL, {
         onOpen: () => {
@@ -31,13 +54,13 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
             console.log('Disconnected from Signaling Server', event);
             if (event.code === 4003 || event.code === 1008) {
                 alert(`Disconnected: ${event.reason || "You have been blocked/kicked."}`);
-                window.location.href = '/rooms'; // Force redirect
+                window.location.href = '/rooms';
             }
         },
         onError: (event) => {
             console.error('WebSocket Error:', event);
         },
-        shouldReconnect: (event) => event.code !== 4003 && event.code !== 1008, // Don't reconnect if blocked
+        shouldReconnect: (event) => event.code !== 4003 && event.code !== 1008,
     });
 
     const startLocalVideo = async () => {
@@ -78,9 +101,15 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
         };
 
         pc.ontrack = (event) => {
+            console.log(`Received remote track from ${targetUserId}`);
+            const stream = event.streams[0];
+            remoteStreams.current[targetUserId] = stream; // Buffer stream
+
+            // Try to attach if ref exists
             const vid = remoteVideoRefs.current[targetUserId];
             if (vid) {
-                vid.srcObject = event.streams[0];
+                vid.srcObject = stream;
+                // vid.play().catch(e => console.error("Autoplay failed:", e)); // Optional
             }
         };
 
@@ -98,11 +127,11 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
 
             // Handle non-sender specific messages first if any
             if (msg.type === 'existing_users') {
-                const existingIds = msg.ids.map(String);
-                setUsers(existingIds);
+                const existingIds = Array.from(new Set(msg.ids.map(String))); // Dedup
+                setUsers(existingIds as string[]);
                 // Also add ourselves if not in list
                 if (!existingIds.includes(myId)) {
-                    setUsers(prev => [...prev, myId]);
+                    setUsers(prev => Array.from(new Set([...prev, myId])));
                 }
                 return;
             }
@@ -116,14 +145,15 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
                 case 'user_joined':
                     {
                         console.log(`User ${senderId} joined.`);
-                        setUsers(prev => prev.includes(senderId) ? prev : [...prev, senderId]);
+                        setUsers(prev => Array.from(new Set([...prev, senderId])));
 
                         const pc = createPeerConnection(senderId);
                         pc.createOffer().then(offer => {
                             pc.setLocalDescription(offer);
                             sendMessage(JSON.stringify({ type: 'offer', target_id: senderId, data: offer }));
                         });
-                        setPeers(prev => [...prev, senderId]);
+                        // Add to peers safely
+                        setPeers(prev => Array.from(new Set([...prev, senderId])));
                     }
                     break;
                 case 'offer':
@@ -135,7 +165,8 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
                                 pc.setLocalDescription(answer);
                                 sendMessage(JSON.stringify({ type: 'answer', target_id: senderId, data: answer }));
                             });
-                        setPeers(prev => prev.includes(senderId) ? prev : [...prev, senderId]);
+                        // Add to peers safely
+                        setPeers(prev => Array.from(new Set([...prev, senderId])));
                     }
                     break;
                 case 'answer':
@@ -155,6 +186,7 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
                         peerConnections.current[senderId].close();
                         delete peerConnections.current[senderId];
                     }
+                    delete remoteStreams.current[senderId];
                     setPeers(prev => prev.filter(id => id !== senderId));
                     setUsers(prev => prev.filter(id => id !== senderId));
                     break;
@@ -172,11 +204,15 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
 
     const setRemoteRef = (id: string, el: HTMLVideoElement | null) => {
         remoteVideoRefs.current[id] = el;
+        // Check if we have a buffered stream to attach
+        if (el && remoteStreams.current[id]) {
+            console.log(`Attaching buffered stream for ${id}`);
+            el.srcObject = remoteStreams.current[id];
+        }
     };
 
     return {
         messages,
-        setMessages,
         peers,
         users,
         localVideoRef,
