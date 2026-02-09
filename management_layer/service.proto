@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package management;
+
+service ManagementService {
+  // Auth
+  rpc Register (RegisterRequest) returns (UserResponse);
+  rpc Login (LoginRequest) returns (LoginResponse);
+
+  // Room Management (Client)
+  rpc CreateRoom (CreateRoomRequest) returns (RoomResponse);
+  rpc ListRooms (Empty) returns (RoomListResponse);
+  
+  // Signaling / Internal
+  rpc ValidateJoin (JoinRequest) returns (JoinResponse);
+  rpc UserJoined (JoinRequest) returns (JoinResponse);
+  rpc UserLeft (JoinRequest) returns (JoinResponse);
+  rpc StoreMessage (MessageRequest) returns (MessageResponse);
+  rpc BlockUser (BlockRequest) returns (BlockResponse);
+}
+
+message Empty {}
+
+// Auth Messages
+message RegisterRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message UserResponse {
+  int32 user_id = 1;
+  string username = 2;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string access_token = 1;
+  string token_type = 2;
+  int32 user_id = 3;
+}
+
+// Room Messages
+message CreateRoomRequest {
+  string name = 1;
+  int32 max_participants = 2;
+  int32 creator_id = 3; // In a real app, this would be inferred from the token
+}
+
+message RoomResponse {
+  int32 id = 1;
+  string name = 2;
+  int32 max_participants = 3;
+  int32 current_participants = 4;
+}
+
+message RoomListResponse {
+  repeated RoomResponse rooms = 1;
+}
+
+// Existing Messages
+message JoinRequest {
+  int32 user_id = 1;
+  int32 room_id = 2;
+}
+
+message JoinResponse {
+  bool allowed = 1;
+  string reason = 2;
+}
+
+message MessageRequest {
+  int32 user_id = 1;
+  int32 room_id = 2;
+  string content = 3;
+}
+
+message MessageResponse {
+  bool success = 1;
+}
+
+message BlockRequest {
+  int32 requester_id = 1; // User initiating the block (e.g. admin)
+  int32 room_id = 2;
+  int32 user_to_block_id = 3;
+  string reason = 4;
+}
+
+message BlockResponse {
+  bool success = 1;
+  string error = 2;
+}

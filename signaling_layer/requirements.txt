@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+redis
+grpcio
+grpcio-tools
+protobuf
+websockets
+python-multipart
+ujson
