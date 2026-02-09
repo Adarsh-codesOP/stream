@@ -109,7 +109,7 @@ def get_room_messages(room_id: int, limit: int = 50, db: Session = Depends(datab
         {
             "id": msg.id,
             "content": msg.content,
-            "user_id": msg.sender_id,
+            "user_id": msg.user_id,
             "username": msg.sender.username if msg.sender else "Unknown",
             "timestamp": msg.timestamp
         }

@@ -111,6 +111,7 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
             room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
             if room:
                 room.current_participants += 1
+                room.is_active = True # Reactivate if was inactive
                 db.commit()
             return service_pb2.JoinResponse(allowed=True, reason="Joined")
         finally:
@@ -123,8 +124,9 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
             if room:
                 room.current_participants -= 1
                 if room.current_participants <= 0:
-                    # Delete room if empty
-                    db.delete(room)
+                    room.current_participants = 0
+                    room.is_active = False
+                    # db.delete(room) # Don't delete, to preserve chat history
                 db.commit()
             return service_pb2.JoinResponse(allowed=True, reason="Left")
         finally:
@@ -143,13 +145,14 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
 
             new_msg = models.Message(
                 room_id=request.room_id,
-                sender_id=request.user_id,
+                user_id=request.user_id,
                 content=request.content
             )
             db.add(new_msg)
             db.commit()
             return service_pb2.MessageResponse(success=True)
         except Exception:
+            db.rollback()
             return service_pb2.MessageResponse(success=False)
         finally:
             db.close()
