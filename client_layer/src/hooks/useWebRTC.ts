@@ -20,13 +20,15 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
     const remoteVideoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
     const remoteStreams = useRef<{ [key: string]: MediaStream }>({}); // Buffer for streams
 
-    const WS_URL = `ws://localhost:8001/ws/${roomId}/${userId}`;
+    const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8001';
+    const WS_URL = `${WS_BASE_URL}/ws/${roomId}/${userId}`;
 
     // Fetch History
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/rooms/${roomId}/messages`);
+                const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                const response = await fetch(`${apiBase}/rooms/${roomId}/messages`);
                 if (response.ok) {
                     const history = await response.json();
                     const formatted = history.map((msg: any) => ({

@@ -1,13 +1,60 @@
 version: '3.8'
 
 services:
+  # Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: StreamLink
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Message Broker
   redis:
-    image: redis:alpine
-    container_name: streamlink_redis
+    image: redis:7
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
+
+  # Management Layer (API + gRPC Server)
+  management:
+    build: ./management_layer
+    ports:
+      - "8000:8000"
+      - "50051:50051"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/StreamLink
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+
+  # Signaling Layer (WebSocket + gRPC Client)
+  signaling:
+    build: ./signaling_layer
+    ports:
+      - "8001:8001"
+    environment:
+      SIGNALING_HOST: 0.0.0.0
+      SIGNALING_PORT: 8001
+      MANAGEMENT_HOST: management
+      MANAGEMENT_PORT: 50051
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - redis
+      - management
+
+  # Client Layer (Frontend)
+  client:
+    build: ./client_layer
+    ports:
+      - "80:80"
+    depends_on:
+      - management
+      - signaling
 
 volumes:
-  redis_data:
+  postgres_data:

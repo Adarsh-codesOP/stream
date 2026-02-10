@@ -1,6 +1,6 @@
 from database import engine
 from models import Base
-import models # fast import to ensure models are registered
+import models 
 
 def reset_db():
     print("Dropping all tables...")
