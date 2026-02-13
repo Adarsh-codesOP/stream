@@ -13,17 +13,17 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
     const [peers, setPeers] = useState<string[]>([]);
     const [users, setUsers] = useState<string[]>([]);
 
-    // Refs for non-rendering state
+
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const peerConnections = useRef<{ [key: string]: RTCPeerConnection }>({});
     const localStream = useRef<MediaStream | null>(null);
     const remoteVideoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
-    const remoteStreams = useRef<{ [key: string]: MediaStream }>({}); // Buffer for streams
+    const remoteStreams = useRef<{ [key: string]: MediaStream }>({}); // buffer for streams
 
     const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8001';
     const WS_URL = `${WS_BASE_URL}/ws/${roomId}/${userId}`;
 
-    // Fetch History
+
     useEffect(() => {
         const fetchHistory = async () => {
             try {
@@ -77,7 +77,7 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
         }
     };
 
-    // --- WebRTC Logic ---
+
 
     const createPeerConnection = useCallback((targetUserId: string) => {
         if (peerConnections.current[targetUserId]) return peerConnections.current[targetUserId];
@@ -105,9 +105,8 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
         pc.ontrack = (event) => {
             console.log(`Received remote track from ${targetUserId}`);
             const stream = event.streams[0];
-            remoteStreams.current[targetUserId] = stream; // Buffer stream
+            remoteStreams.current[targetUserId] = stream; // buffer stream
 
-            // Try to attach if ref exists
             const vid = remoteVideoRefs.current[targetUserId];
             if (vid) {
                 vid.srcObject = stream;
@@ -119,7 +118,7 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
         return pc;
     }, [sendMessage]);
 
-    // --- Signal Handling ---
+
 
     useEffect(() => {
         if (lastMessage !== null) {
@@ -127,11 +126,11 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
             const senderId = String(msg.user_id);
             const myId = String(userId);
 
-            // Handle non-sender specific messages first if any
+
             if (msg.type === 'existing_users') {
                 const existingIds = Array.from(new Set(msg.ids.map(String))); // Dedup
                 setUsers(existingIds as string[]);
-                // Also add ourselves if not in list
+
                 if (!existingIds.includes(myId)) {
                     setUsers(prev => Array.from(new Set([...prev, myId])));
                 }
@@ -154,7 +153,7 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
                             pc.setLocalDescription(offer);
                             sendMessage(JSON.stringify({ type: 'offer', target_id: senderId, data: offer }));
                         });
-                        // Add to peers safely
+
                         setPeers(prev => Array.from(new Set([...prev, senderId])));
                     }
                     break;
@@ -167,7 +166,7 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
                                 pc.setLocalDescription(answer);
                                 sendMessage(JSON.stringify({ type: 'answer', target_id: senderId, data: answer }));
                             });
-                        // Add to peers safely
+
                         setPeers(prev => Array.from(new Set([...prev, senderId])));
                     }
                     break;
@@ -196,7 +195,7 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
         }
     }, [lastMessage, createPeerConnection, userId, sendMessage]);
 
-    // Cleanup
+
     useEffect(() => {
         return () => {
             localStream.current?.getTracks().forEach(track => track.stop());
@@ -206,7 +205,7 @@ export const useWebRTC = ({ roomId, userId, onConnect }: WebRTCProps) => {
 
     const setRemoteRef = (id: string, el: HTMLVideoElement | null) => {
         remoteVideoRefs.current[id] = el;
-        // Check if we have a buffered stream to attach
+
         if (el && remoteStreams.current[id]) {
             console.log(`Attaching buffered stream for ${id}`);
             el.srcObject = remoteStreams.current[id];

@@ -12,9 +12,7 @@ class GrpcClient:
 
     async def validate_join(self, user_id: int, room_id: int):
         try:
-            # gRPC is synchronous by default, but for high-concurrency signaling we might want async
-            # For simplicity in this demo, we run it directly. 
-            # In production, run in threadpool or use grpc-asyncio.
+
             response = self.stub.ValidateJoin(service_pb2.JoinRequest(user_id=user_id, room_id=room_id))
             return response.allowed, response.reason
         except grpc.RpcError as e:
@@ -39,5 +37,5 @@ class GrpcClient:
         except grpc.RpcError as e:
             print(f"gRPC StoreMessage Failed: {e}")
 
-# Singleton instance
+
 grpc_client = GrpcClient()

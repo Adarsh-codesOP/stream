@@ -20,7 +20,7 @@ class RedisManager:
     async def _listener_loop(self):
         """Internal loop to consume messages."""
         async with self.pubsub as pb:
-            # Subscribe to a control channel to keep connection alive
+
             await pb.subscribe("global_control")
             
             while True:
@@ -56,5 +56,5 @@ class RedisManager:
             await self.pubsub.unsubscribe(channel)
             self.subscribed_rooms.remove(room_id)
 
-# Singleton
+
 redis_manager = RedisManager()

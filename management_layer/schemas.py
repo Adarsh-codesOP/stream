@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
-# User Schemas
+
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -15,7 +15,7 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Room Schemas
+
 class RoomBase(BaseModel):
     name: str
     max_participants: int
@@ -31,7 +31,7 @@ class RoomResponse(RoomBase):
     class Config:
         from_attributes = True
 
-# Message Schemas
+
 class MessageBase(BaseModel):
     content: str
 
@@ -47,7 +47,7 @@ class MessageResponse(MessageBase):
     class Config:
         from_attributes = True
 
-# Token Schema
+
 class Token(BaseModel):
     access_token: str
     token_type: str
