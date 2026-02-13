@@ -20,7 +20,7 @@ class RedisManager:
     async def _listener_loop(self):
         """Internal loop to consume messages."""
         async with self.pubsub as pb:
-
+           
             await pb.subscribe("global_control")
             
             while True:
