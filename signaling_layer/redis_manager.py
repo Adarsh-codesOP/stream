@@ -12,7 +12,6 @@ class RedisManager:
         self.subscribed_rooms = set()
 
     async def connect(self):
-        """Connects and starts the listener loop."""
         if not self.is_listening:
             self.is_listening = True
             asyncio.create_task(self._listener_loop())
@@ -30,7 +29,7 @@ class RedisManager:
                         if self.broadcast_callback:
                             await self.broadcast_callback(message['channel'], message['data'])
                 except Exception as e:
-                    print(f"Redis Loop Error: {e}")
+                    print(f"Redis Error: {e}")
                     await asyncio.sleep(1)
 
     async def set_callback(self, callback):
@@ -45,14 +44,14 @@ class RedisManager:
             return
         
         channel = f"room:{room_id}"
-        print(f"Subscribing to Redis channel: {channel}")
+        print(f"Subscribing to Redis : {channel}")
         await self.pubsub.subscribe(channel)
         self.subscribed_rooms.add(room_id)
 
     async def unsubscribe(self, room_id: int):
         if room_id in self.subscribed_rooms:
             channel = f"room:{room_id}"
-            print(f"Unsubscribing from Redis channel: {channel}")
+            print(f"Unsubscribing from Redis : {channel}")
             await self.pubsub.unsubscribe(channel)
             self.subscribed_rooms.remove(room_id)
 

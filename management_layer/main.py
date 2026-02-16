@@ -40,9 +40,9 @@ async def startup_event():
 
     t = threading.Thread(target=run_grpc_server, daemon=True)
     t.start()
-    print("gRPC Server thread started.")
+    print("gRPC server started.")
 
 if __name__ == '__main__':
 
-    print("Starting HTTP Server on :8000...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False) # Reload false for threading safety in dev
+    print("Starting HTTP Server :8000...")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

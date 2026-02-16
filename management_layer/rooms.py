@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 import database, models, schemas
-from auth import oauth2_scheme # Need to fix imports since auth.py depends on grpc_server config
+from auth import oauth2_scheme 
 from jose import JWTError, jwt
 from grpc_server import SECRET_KEY, ALGORITHM
 import redis
@@ -64,18 +64,16 @@ def block_user_from_room(room_id: int, user_to_block_id: int, reason: str = "Ban
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
-
     if room.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="Only room creator can ban users")
 
-
     if user_to_block_id == current_user.id:
+        
         raise HTTPException(status_code=400, detail="Cannot ban yourself")
         
-
     user_to_block = db.query(models.User).filter(models.User.id == user_to_block_id).first()
     if not user_to_block:
-         raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User not found")
 
 
     existing_ban = db.query(models.RoomBan).filter(models.RoomBan.room_id == room_id, models.RoomBan.user_id == user_to_block_id).first()
@@ -98,7 +96,6 @@ def block_user_from_room(room_id: int, user_to_block_id: int, reason: str = "Ban
     except Exception as e:
         print(f"Failed to send kick message to Redis: {e}")
 
-    return {"message": f"User {user_to_block.username} banned from room {room.name}"}
     return {"message": f"User {user_to_block.username} banned from room {room.name}"}
 
 @router.get("/{room_id}/messages")

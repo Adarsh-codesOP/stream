@@ -32,7 +32,7 @@ app.add_middleware(
 
 
 async def handle_redis_message(channel: str, data: str):
-    """Callback triggered by RedisManager when a message arrives."""
+    
     if channel.startswith("room:"):
         try:
             room_id = int(channel.split(":")[1])
@@ -99,7 +99,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: int, user_id: int):
             if msg_type == "chat":
                 content = message_data.get("content")
                 
-                #real time delivery using redis
+                
                 payload = {
                     "type": "chat",
                     "user_id": user_id,
@@ -107,15 +107,15 @@ async def websocket_endpoint(websocket: WebSocket, room_id: int, user_id: int):
                 }
                 await redis_manager.publish(room_id, payload)
                 
-                #persistant message to management server
+                
                 try:
                     asyncio.create_task(grpc_client.store_message(user_id, room_id, content))
                 except Exception as e:
                      print(f"gRPC Store Message Error: {e}")
 
-            # WebRTC signal
+            
             elif msg_type in ["offer", "answer", "candidate"]:
-                # Broadcast signal
+                
                 payload = {
                     "type": msg_type,
                     "user_id": user_id,
