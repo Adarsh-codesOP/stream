@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 import database, models, schemas
-from auth import oauth2_scheme # Need to fix imports since auth.py depends on grpc_server config
+from auth import oauth2_scheme 
 from jose import JWTError, jwt
 from grpc_server import SECRET_KEY, ALGORITHM
 import redis
@@ -59,25 +59,23 @@ def get_room(room_id: int, db: Session = Depends(database.get_db)):
 
 @router.post("/{room_id}/block")
 def block_user_from_room(room_id: int, user_to_block_id: int, reason: str = "Banned by admin", current_user: models.User = Depends(get_current_user), db: Session = Depends(database.get_db)):
-    # 1. Check if room exists
+
     room = db.query(models.Room).filter(models.Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
-    # 2. Check permission (Only creator can ban for now)
     if room.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="Only room creator can ban users")
 
-    # 3. Prevent self-ban
     if user_to_block_id == current_user.id:
+        
         raise HTTPException(status_code=400, detail="Cannot ban yourself")
         
-    # 4. Check user existence
     user_to_block = db.query(models.User).filter(models.User.id == user_to_block_id).first()
     if not user_to_block:
-         raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User not found")
 
-    # 5. Create Ban
+
     existing_ban = db.query(models.RoomBan).filter(models.RoomBan.room_id == room_id, models.RoomBan.user_id == user_to_block_id).first()
     if existing_ban:
         return {"message": "User already banned"}
@@ -86,7 +84,7 @@ def block_user_from_room(room_id: int, user_to_block_id: int, reason: str = "Ban
     db.add(new_ban)
     db.commit()
     
-    # Notify Signaling Server to Kick User
+
     try:
         r = redis.Redis(host='localhost', port=6379, db=0)
         kick_message = json.dumps({
@@ -98,7 +96,6 @@ def block_user_from_room(room_id: int, user_to_block_id: int, reason: str = "Ban
     except Exception as e:
         print(f"Failed to send kick message to Redis: {e}")
 
-    return {"message": f"User {user_to_block.username} banned from room {room.name}"}
     return {"message": f"User {user_to_block.username} banned from room {room.name}"}
 
 @router.get("/{room_id}/messages")

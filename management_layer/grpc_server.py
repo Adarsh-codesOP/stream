@@ -13,7 +13,7 @@ ALGORITHM = "HS256"
 
 class ManagementService(service_pb2_grpc.ManagementServiceServicer):
     
-    # --- Auth ---
+
     def Register(self, request, context):
         db: Session = database.SessionLocal()
         try:
@@ -34,24 +34,21 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
         try:
             user = db.query(models.User).filter(models.User.username == request.username).first()
             if not user or not pwd_context.verify(request.password, user.password_hash):
-                # How to return error in gRPC? usually logic exception, but let's return empty token
                 return service_pb2.LoginResponse(access_token="", token_type="", user_id=-1)
             
-            # Generate Token (Simple for now)
             token_data = {"sub": user.username, "id": user.id}
             token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
             return service_pb2.LoginResponse(access_token=token, token_type="bearer", user_id=user.id)
         finally:
             db.close()
 
-    # --- Rooms ---
     def CreateRoom(self, request, context):
         db: Session = database.SessionLocal()
         try:
             new_room = models.Room(
                 name=request.name,
                 max_participants=request.max_participants,
-                created_by=request.creator_id # In real world, verify token from metadata context
+                created_by=request.creator_id
             )
             db.add(new_room)
             db.commit()
@@ -63,7 +60,6 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
                 current_participants=new_room.current_participants
             )
         except Exception as e:
-            # Handle unique name error
              return service_pb2.RoomResponse(id=-1, name="Error: Room exists")
         finally:
             db.close()
@@ -84,16 +80,13 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
         finally:
             db.close()
 
-    # --- Signaling / Internal ---
     def ValidateJoin(self, request, context):
         db: Session = database.SessionLocal()
         try:
-            # Check if room exists
             room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
             if not room:
                 return service_pb2.JoinResponse(allowed=False, reason="Room not found")
             
-            # Check if user is banned from this specific room
             ban = db.query(models.RoomBan).filter(
                 models.RoomBan.room_id == request.room_id,
                 models.RoomBan.user_id == request.user_id
@@ -111,7 +104,7 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
             room = db.query(models.Room).filter(models.Room.id == request.room_id).first()
             if room:
                 room.current_participants += 1
-                room.is_active = True # Reactivate if was inactive
+                room.is_active = True
                 db.commit()
             return service_pb2.JoinResponse(allowed=True, reason="Joined")
         finally:
@@ -126,7 +119,7 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
                 if room.current_participants <= 0:
                     room.current_participants = 0
                     room.is_active = False
-                    # db.delete(room) # Don't delete, to preserve chat history
+                    # db.delete(room)
                 db.commit()
             return service_pb2.JoinResponse(allowed=True, reason="Left")
         finally:
@@ -135,7 +128,6 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
     def StoreMessage(self, request, context):
         db: Session = database.SessionLocal()
         try:
-            # Check if user is banned
             ban = db.query(models.RoomBan).filter(
                 models.RoomBan.room_id == request.room_id,
                 models.RoomBan.user_id == request.user_id
@@ -172,7 +164,6 @@ class ManagementService(service_pb2_grpc.ManagementServiceServicer):
             if request.user_to_block_id == request.requester_id:
                 return service_pb2.BlockResponse(success=False, error="Cannot block yourself")
 
-            # if already banned
             existing_ban = db.query(models.RoomBan).filter(
                 models.RoomBan.room_id == request.room_id,
                 models.RoomBan.user_id == request.user_to_block_id

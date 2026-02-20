@@ -4,15 +4,15 @@ import collections
 
 class ConnectionManager:
     def __init__(self):
-        # Active connections: RoomID -> List[WebSocket]
+
         self.active_connections: Dict[int, List[WebSocket]] = collections.defaultdict(list)
-        # Reverse lookup: WebSocket -> RoomID
+
         self.socket_to_room: Dict[WebSocket, int] = {}
-        # Reverse lookup: WebSocket -> UserID
+
         self.socket_to_user: Dict[WebSocket, int] = {}
 
     async def connect(self, websocket: WebSocket, room_id: int, user_id: int):
-        # await websocket.accept() # Handled in main.py
+
         self.active_connections[room_id].append(websocket)
         self.socket_to_room[websocket] = room_id
         self.socket_to_user[websocket] = user_id
@@ -70,9 +70,9 @@ class ConnectionManager:
             print(f"Kicking User {user_id} from Room {room_id}")
             try:
                 await target_ws.close(code=4003, reason="You have been blocked from this room.")
-                # Disconnect logic will call manager.disconnect(ws) automatically via exception in main loop
+
             except Exception as e:
                 print(f"Error closing socket for kicked user: {e}")
 
-# Singleton
+
 manager = ConnectionManager()

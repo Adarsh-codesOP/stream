@@ -1,0 +1,340 @@
+
+# 🔧 Backend Flow: Step-by-Step for Each User Action
+
+---
+
+## 1️⃣ User opens the app (backend view)
+
+Nothing happens yet.
+
+* No WebSocket
+* No Redis
+* No signaling
+* No DB calls
+
+Backend is **idle**.
+
+---
+
+## 2️⃣ User logs in
+
+### Backend flow
+
+1. **Client → Management Server**
+
+   * Sends credentials (email/password or OAuth)
+
+2. **Management Server**
+
+   * Validates credentials
+   * Queries **Database**
+   * Checks user status (active/banned)
+
+3. **Management Server**
+
+   * Generates:
+
+     * `userId`
+     * Auth token (JWT/session)
+   * Returns token to client
+
+📌 **Signaling server is NOT involved**
+
+---
+
+## 3️⃣ User creates a room
+
+### Backend flow
+
+1. **Client → Management Server**
+
+   * `CreateRoom` request
+
+2. **Management Server**
+
+   * Validates request
+   * Inserts new row into `rooms` table
+   * Sets creator as owner/admin
+
+3. **Management Server → Client**
+
+   * Returns `roomId`
+
+📌 No Redis
+📌 No signaling
+📌 Pure control + persistence
+
+---
+
+## 4️⃣ User joins a room
+
+### Backend flow
+
+1. **Client → Load Balancer**
+
+   * Opens WebSocket request
+
+2. **Load Balancer**
+
+   * Selects a signaling server
+   * Forwards WebSocket handshake
+
+3. **Client → Signaling Server**
+
+   * Sends `roomId + auth token`
+
+4. **Signaling Server → Management Server (gRPC)**
+
+   * `CanJoinRoom(userId, roomId)`
+
+5. **Management Server**
+
+   * Queries DB:
+
+     * Room exists?
+     * User banned?
+     * Room full?
+   * Returns `ALLOW` / `REJECT`
+
+6. **Signaling Server**
+
+   * If `ALLOW`:
+
+     * Keeps WebSocket open
+     * Maps:
+
+       ```
+       roomId → user WebSocket
+       ```
+     * If first user of this room:
+
+       * `SUBSCRIBE room:{roomId}` in Redis
+   * If `REJECT`:
+
+     * Closes WebSocket
+
+---
+
+## 5️⃣ Another user joins the same room (different server)
+
+### Backend flow
+
+* Same steps as above
+* Second signaling server:
+
+  * Subscribes to the same Redis channel
+* Redis now has:
+
+  ```
+  room:{roomId} → [Server A, Server B]
+  ```
+
+📌 Redis still has no idea who users are
+
+---
+
+## 6️⃣ User sends a chat message
+
+### Backend flow (two parallel paths)
+
+### 🔁 A) Real-time delivery
+
+1. **Client → Signaling Server**
+
+   * Chat message via WebSocket
+
+2. **Signaling Server → Redis**
+
+   * `PUBLISH room:{roomId}`
+
+3. **Redis**
+
+   * Broadcasts message to all subscribed signaling servers
+
+4. **Each Signaling Server**
+
+   * Looks up local users for `roomId`
+   * Sends message via WebSocket
+
+---
+
+### 💾 B) Persistence
+
+5. **Origin Signaling Server → Management Server (gRPC)**
+
+   * `StoreMessage(roomId, userId, message, timestamp)`
+
+6. **Management Server**
+
+   * Writes message to DB
+
+📌 Delivery and storage are **decoupled**
+
+---
+
+## 7️⃣ User receives chat messages
+
+### Backend flow
+
+* Signaling server receives Redis message
+* Matches `roomId`
+* Pushes message to relevant WebSocket clients
+
+📌 No DB reads
+📌 No management calls
+
+---
+
+## 8️⃣ User starts a video call
+
+### Backend flow (signaling only)
+
+1. **Client**
+
+   * Requests camera/mic
+   * Creates WebRTC SDP offer
+
+2. **Client → Signaling Server**
+
+   * Sends offer via WebSocket
+
+3. **Signaling Server → Redis**
+
+   * Publishes offer to `room:{roomId}`
+
+4. **Redis → Other Signaling Servers**
+
+   * Broadcasts offer
+
+5. **Other Signaling Servers → Clients**
+
+   * Forward offer via WebSocket
+
+📌 Backend does NOT see media
+📌 Only signaling metadata
+
+---
+
+## 9️⃣ WebRTC answer & ICE exchange
+
+### Backend flow
+
+* Same Redis-based path:
+
+  ```
+  Client → Signaling → Redis → Signaling → Client
+  ```
+
+📌 Continues until P2P connection is ready
+
+---
+
+## 🔟 Video/audio flows (backend is OUT)
+
+* Clients establish **direct WebRTC P2P**
+* Backend does NOTHING
+* No Redis
+* No signaling
+* No DB
+
+---
+
+## 1️⃣1️⃣ Chat + call run together
+
+### Backend behavior
+
+* Chat continues via Redis + signaling
+* WebRTC media remains P2P
+* Both flows are independent
+
+---
+
+## 1️⃣2️⃣ User leaves the call
+
+### Backend flow
+
+1. **Client**
+
+   * Closes WebRTC PeerConnection
+   * Stops media tracks
+
+📌 Backend not involved
+📌 Other client detects ICE disconnect
+
+---
+
+## 1️⃣3️⃣ User leaves the room
+
+### Backend flow
+
+1. **Client**
+
+   * Closes WebSocket
+
+2. **Signaling Server**
+
+   * Removes user from internal map
+   * If last user in room:
+
+     * `UNSUBSCRIBE room:{roomId}`
+
+📌 Redis cleans up automatically
+
+---
+
+## 1️⃣4️⃣ User disconnects unexpectedly
+
+### Backend flow
+
+* WebSocket drops
+* Signaling server cleans in-memory state
+* Redis unsubscribes if needed
+
+Client later reconnects and repeats join flow
+
+---
+
+## 1️⃣5️⃣ User is banned
+
+### Backend flow
+
+1. **Admin → Management Server**
+
+   * Ban request
+
+2. **Management Server**
+
+   * Updates DB
+   * Sends `ForceDisconnect(userId)` via gRPC
+
+3. **Signaling Server**
+
+   * Closes user’s WebSocket
+
+4. **Client**
+
+   * Detects disconnect
+   * Stops WebRTC
+
+---
+
+## 🧠 Backend summary (core truth)
+
+```
+Management Server → authority + persistence
+Signaling Server  → real-time coordination
+Redis             → server-to-server bridge
+WebRTC            → client-to-client media
+```
+
+Each does **one job only**.
+
+---
+
+## One-line backend summary (perfect)
+
+> “The backend separates control logic and persistence in the management layer, real-time coordination in the signaling layer bridged by Redis Pub/Sub, and offloads media transmission entirely to peer-to-peer WebRTC.”
+
+---
+
+

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Annotated
 
 import database, models, schemas
-from grpc_server import pwd_context, SECRET_KEY, ALGORITHM # Reuse config from grpc_server
+from grpc_server import pwd_context, SECRET_KEY, ALGORITHM
 from jose import jwt
 from fastapi.security import OAuth2PasswordBearer
 

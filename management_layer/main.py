@@ -11,12 +11,10 @@ import auth, rooms
 import grpc_server
 import service_pb2_grpc
 
-# Ensure tables exist
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="StreamLink Management Layer")
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,7 +23,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers (HTTP API)
 app.include_router(auth.router)
 app.include_router(rooms.router)
 
@@ -40,12 +37,12 @@ def run_grpc_server():
 
 @app.on_event("startup")
 async def startup_event():
-    # Start gRPC in background
+
     t = threading.Thread(target=run_grpc_server, daemon=True)
     t.start()
-    print("gRPC Server thread started.")
+    print("gRPC server started.")
 
 if __name__ == '__main__':
-    # Run FastAPI (which triggers startup_event -> gRPC)
-    print("Starting HTTP Server on :8000...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False) # Reload false for threading safety in dev
+
+    print("Starting HTTP Server :8000...")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
